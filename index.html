@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从低谷到发光 ✦ 成长故事</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Serif+SC:wght@200;300;400;600;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-deep: #07070e;
+    --bg-section: #0a0a16;
+    --gold: #d4a574;
+    --gold-bright: #f0c27a;
+    --fire: #e85d04;
+    --ember: #faa307;
+    --glow: #ffba08;
+    --text: #f5ebe0;
+    --text-dim: #9b8e7e;
+    --white-hot: #fff3e0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  html::-webkit-scrollbar { display: none; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'Noto Serif SC', 'STSong', 'SimSun', serif;
+    overflow-x: hidden;
+    cursor: default;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== CANVAS ===== */
+  #particleCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 10; pointer-events: none;
+  }
+
+  /* ===== VIGNETTE ===== */
+  .vignette {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(7,7,14,0.7) 100%);
+  }
+
+  /* ===== CURSOR GLOW ===== */
+  .cursor-glow {
+    position: fixed; z-index: 4; pointer-events: none;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,93,4,0.12) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s;
+  }
+
+  /* ===== INTRO OVERLAY ===== */
+  #intro {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg-deep);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 1.2s ease, visibility 1.2s ease;
+  }
+  #intro.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+  .intro-spark {
+    width: 4px; height: 4px;
+    background: var(--glow);
+    border-radius: 50%;
+    box-shadow: 0 0 20px var(--glow), 0 0 60px var(--fire), 0 0 100px var(--ember);
+    animation: introSpark 2.4s ease-out forwards;
+    margin-bottom: 48px;
+  }
+  @keyframes introSpark {
+    0% { transform: scale(0); opacity: 0; }
+    30% { transform: scale(1); opacity: 1; }
+    60% { transform: scale(3); opacity: 0.8; }
+    100% { transform: scale(12); opacity: 0; }
+  }
+
+  .intro-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--gold-bright);
+    text-shadow: 0 0 40px rgba(240,194,122,0.5), 0 0 80px rgba(232,93,4,0.3);
+    opacity: 0;
+    animation: fadeInUp 1.8s 1.2s ease forwards;
+  }
+  .intro-sub {
+    font-family: 'Cormorant Garamond', 'Noto Serif SC', serif;
+    font-size: clamp(0.9rem, 1.8vw, 1.3rem);
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    margin-top: 20px;
+    opacity: 0;
+    animation: fadeInUp 1.8s 1.8s ease forwards;
+  }
+  .intro-line {
+    width: 60px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin-top: 36px;
+    opacity: 0;
+    animation: fadeInUp 1.8s 2.1s ease forwards;
+  }
+  .intro-skip {
+    position: absolute; bottom: 48px;
+    font-size: 0.8rem; letter-spacing: 0.1em;
+    color: var(--text-dim);
+    background: none; border: 1px solid rgba(155,142,126,0.3);
+    padding: 10px 28px; border-radius: 24px;
+    cursor: pointer; transition: all 0.4s;
+    opacity: 0;
+    animation: fadeInUp 1.8s 2.4s ease forwards;
+  }
+  .intro-skip:hover { border-color: var(--gold); color: var(--gold-bright); }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); filter: blur(8px); }
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  main { position: relative; z-index: 8; }
+
+  section {
+    min-height: 100vh; height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    scroll-snap-align: start;
+    padding: 40px 24px;
+    position: relative;
+  }
+
+  .section-inner {
+    max-width: 680px; width: 100%;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(6px);
+    transition: all 1s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .section-inner.visible { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+  .chapter-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.75rem; font-weight: 400; letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .chapter-num span {
+    display: inline-block; width: 24px; height: 1px;
+    background: var(--gold); vertical-align: middle; margin: 0 12px;
+    opacity: 0.5;
+  }
+
+  .section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+    font-weight: 600; letter-spacing: 0.08em;
+    color: var(--gold-bright);
+    text-shadow: 0 0 30px rgba(240,194,122,0.4);
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  .section-text {
+    font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+    font-weight: 300; line-height: 2.1;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+  .section-text em {
+    font-style: normal;
+    color: var(--gold-bright);
+    text-shadow: 0 0 12px rgba(240,194,122,0.3);
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn-ignite {
+    display: inline-block;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1rem; letter-spacing: 0.12em;
+    color: var(--white-hot);
+    background: transparent;
+    border: 1px solid var(--gold);
+    padding: 14px 44px; border-radius: 30px;
+    cursor: pointer;
+    margin-top: 48px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.5s;
+    z-index: 1;
+  }
+  .btn-ignite::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(232,93,4,0.3), rgba(250,163,7,0.2));
+    opacity: 0; transition: opacity 0.5s; z-index: -1; border-radius: 30px;
+  }
+  .btn-ignite:hover::before { opacity: 1; }
+  .btn-ignite:hover {
+    border-color: var(--glow);
+    box-shadow: 0 0 30px rgba(255,186,8,0.3), 0 0 60px rgba(232,93,4,0.15);
+    transform: translateY(-2px);
+  }
+  .btn-ignite:active { transform: scale(0.96); }
+
+  /* ===== BURST INDICATOR ===== */
+  .spark-burst {
+    position: absolute; pointer-events: none;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--glow);
+    box-shadow: 0 0 18px var(--glow), 0 0 40px var(--fire);
+    animation: burst 0.8s ease-out forwards;
+  }
+  @keyframes burst {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(20); opacity: 0; }
+  }
+
+  /* ===== SCROLL HINT ===== */
+  .scroll-hint {
+    position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    opacity: 0.6; animation: floatHint 3s ease-in-out infinite;
+  }
+  .scroll-hint span { font-size: 0.65rem; letter-spacing: 0.2em; color: var(--text-dim); }
+  .scroll-hint .arrow {
+    width: 20px; height: 20px;
+    border-right: 1px solid var(--gold); border-bottom: 1px solid var(--gold);
+    transform: rotate(45deg); opacity: 0.5;
+  }
+  @keyframes floatHint {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(10px); }
+  }
+
+  /* ===== PROGRESS DOTS ===== */
+  #progress {
+    position: fixed; right: 20px; top: 50%; transform: translateY(-50%);
+    z-index: 20; display: flex; flex-direction: column; gap: 16px;
+  }
+  .progress-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(212,165,116,0.25);
+    transition: all 0.5s;
+    cursor: pointer;
+  }
+  .progress-dot.active {
+    background: var(--gold-bright);
+    box-shadow: 0 0 12px var(--glow), 0 0 24px rgba(232,93,4,0.4);
+    transform: scale(1.5);
+  }
+
+  /* ===== SHARE / END SECTION ===== */
+  .share-buttons {
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+    margin-top: 32px;
+  }
+  .btn-share {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.85rem; letter-spacing: 0.08em;
+    padding: 10px 28px; border-radius: 24px;
+    border: 1px solid rgba(212,165,116,0.5);
+    background: rgba(212,165,116,0.06);
+    color: var(--gold);
+    cursor: pointer;
+    transition: all 0.4s;
+  }
+  .btn-share:hover {
+    background: rgba(212,165,116,0.15);
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 20px rgba(240,194,122,0.2);
+  }
+
+  .signature {
+    margin-top: 40px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem; font-style: italic;
+    color: var(--text-dim); letter-spacing: 0.15em;
+  }
+
+  /* ===== GRAIN OVERLAY ===== */
+  .grain {
+    position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 640px) {
+    #progress { right: 8px; gap: 12px; }
+    .progress-dot { width: 6px; height: 6px; }
+    section { padding: 40px 20px; }
+    .section-inner { max-width: 100%; }
+    .share-buttons { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Grain overlay -->
+<div class="grain"></div>
+<!-- Vignette -->
+<div class="vignette"></div>
+<!-- Cursor glow -->
+<div class="cursor-glow" id="cursorGlow"></div>
+<!-- Particle canvas -->
+<canvas id="particleCanvas"></canvas>
+
+<!-- ===== INTRO ===== -->
+<div id="intro">
+  <div class="intro-spark"></div>
+  <h1 class="intro-title">从低谷到发光</h1>
+  <p class="intro-sub">a journey from darkness to light</p>
+  <div class="intro-line"></div>
+  <button class="intro-skip" id="btnSkip">轻触进入 ✦</button>
+</div>
+
+<!-- ===== PROGRESS DOTS ===== -->
+<nav id="progress">
+  <div class="progress-dot active" data-section="0"></div>
+  <div class="progress-dot" data-section="1"></div>
+  <div class="progress-dot" data-section="2"></div>
+  <div class="progress-dot" data-section="3"></div>
+  <div class="progress-dot" data-section="4"></div>
+  <div class="progress-dot" data-section="5"></div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<main>
+  <!-- Section 0: Opening / The Fall -->
+  <section id="s0">
+    <div class="section-inner">
+      <div class="chapter-num"><span></span> 第一章 <span></span></div>
+      <h2 class="section-title">有些时刻<br>世界突然暗了</h2>
+      <p class="section-text">
+        那一年，像走进一条很长的隧道。<br>
+        所有声音都变得很远，<br>
+        连自己都不太认得自己了。
+      </p>
+    </div>
+    <div class="scroll-hint"><span>向下滚动</span><div class="arrow"></div></div>
+  </section>
+
+  <!-- Section 1: The Ember -->
+  <section id="s1">
+    <div class="section-inner">
+      <div class="chapter-num"><span></span> 第二章 <span></span></div>
+      <h2 class="section-title">灰烬深处<br>有余温</h2>
+      <p class="section-text">
+        在最暗的地方待久了，<br>
+        眼睛反而能看见<em>微光</em>。<br>
+        原来我心底，一直藏着一颗没熄的火种。
+      </p>
+      <button class="btn-ignite" data-action="spark">触碰这颗火星 ✦</button>
+    </div>
+  </section>
+
+  <!-- Section 2: Sparks -->
+  <section id="s2">
+    <div class="section-inner">
+      <div class="chapter-num"><span></span> 第三章 <span></span></div>
+      <h2 class="section-title">一点一点<br>把自己点燃</h2>
+      <p class="section-text">
+        不必等谁来照亮我。<br>
+        一根火柴，就足够开始了。<br>
+        <em>我决定成为自己的光。</em>
+      </p>
+      <button class="btn-ignite" data-action="ignite">点燃 ✦</button>
+    </div>
+  </section>
+
+  <!-- Section 3: The Fire -->
+  <section id="s3">
+    <div class="section-inner">
+      <div class="chapter-num"><span></span> 第四章 <span></span></div>
+      <h2 class="section-title">燃烧不是毁灭<br>是终于敢亮出自己</h2>
+      <p class="section-text">
+        那些疤痕、脆弱、不完美——<br>
+        在火光里，都变成了<em>独一无二的纹理</em>。<br>
+        原来坠落过的人，最懂得怎么飞翔。
+      </p>
+      <button class="btn-ignite" data-action="blaze">让火焰更亮 ✦</button>
+    </div>
+  </section>
+
+  <!-- Section 4: The Light -->
+  <section id="s4">
+    <div class="section-inner">
+      <div class="chapter-num"><span></span> 第五章 <span></span></div>
+      <h2 class="section-title">从低谷到发光<br>这就是我的故事</h2>
+      <p class="section-text">
+        走过长长的夜路之后，<br>
+        我终于看见了自己身上的<em>光芒</em>。<br>
+        不是被谁点亮的——是我本来就有的。
+      </p>
+    </div>
+  </section>
+
+  <!-- Section 5: Share / IP -->
+  <section id="s5">
+    <div class="section-inner">
+      <div class="chapter-num"><span></span> ✦ <span></span></div>
+      <h2 class="section-title">每一个女孩<br>都自带光芒</h2>
+      <p class="section-text">
+        如果你也在经历低谷，<br>
+        请相信，<em>灰烬下面有火种</em>。<br>
+        分享这个故事，点亮更多的人。
+      </p>
+      <div class="share-buttons">
+        <button class="btn-share" id="btnRestart">🔄 再看一遍</button>
+        <button class="btn-share" id="btnShare">💛 分享给朋友</button>
+      </div>
+      <p class="signature">— 从低谷到发光 —</p>
+    </div>
+  </section>
+</main>
+
+<script>
+// ==================== PARTICLE SYSTEM ====================
+const canvas = document.getElementById('particleCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+let particles = [];
+let mouseX = 0, mouseY = 0;
+let globalIntensity = 0.3; // 0-1, controls particle spawn rate
+let targetIntensity = 0.3;
+let burstQueue = [];
+
+const COLORS = {
+  ember: ['#e85d04', '#dc2f02', '#f48c06', '#9d0208'],
+  gold: ['#faa307', '#ffba08', '#e85d04', '#f48c06'],
+  bright: ['#ffba08', '#ffd60a', '#fff3e0', '#ffaa00'],
+  warm: ['#d4a574', '#e8b88a', '#f0c27a', '#c9975a'],
+};
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+class Particle {
+  constructor(x, y, opts = {}) {
+    this.x = x ?? Math.random() * W;
+    this.y = y ?? H + 20;
+    this.vx = opts.vx ?? (Math.random() - 0.5) * 1.6;
+    this.vy = opts.vy ?? -(Math.random() * 1.8 + 0.8);
+    this.size = opts.size ?? Math.random() * 3 + 0.8;
+    this.life = opts.life ?? 1.0;
+    this.decay = opts.decay ?? Math.random() * 0.006 + 0.002;
+    this.palette = opts.palette ?? COLORS.ember;
+    this.color = this.palette[Math.floor(Math.random() * this.palette.length)];
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = (Math.random() - 0.5) * 0.03;
+    this.wobbleAmp = Math.random() * 0.4;
+    this.type = opts.type ?? 'rise'; // 'rise' | 'float' | 'burst'
+  }
+
+  update() {
+    this.wobble += this.wobbleSpeed;
+    this.x += this.vx + Math.sin(this.wobble) * this.wobbleAmp;
+    this.y += this.vy;
+    this.life -= this.decay;
+
+    // Wind drift
+    if (this.type === 'float') {
+      this.x += (mouseX - W / 2) * 0.0003;
+      this.y += (mouseY - H / 2) * 0.0003;
+    }
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    const alpha = this.life;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // Outer glow
+    const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 4);
+    glow.addColorStop(0, this.color);
+    glow.addColorStop(0.4, this.color + '88');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Core
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    // Bright center
+    ctx.fillStyle = '#fff3e0';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  get dead() { return this.life <= 0; }
+}
+
+function spawnBurst(x, y, count = 60) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 5 + 2;
+    particles.push(new Particle(x, y, {
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      size: Math.random() * 3.5 + 1.2,
+      life: 1.0,
+      decay: Math.random() * 0.02 + 0.008,
+      palette: Math.random() < 0.3 ? COLORS.bright : COLORS.gold,
+      type: 'burst',
+    }));
+  }
+}
+
+function spawnAmbient() {
+  const count = Math.floor(globalIntensity * 4);
+  for (let i = 0; i < count; i++) {
+    const x = Math.random() * W;
+    particles.push(new Particle(x, undefined, {
+      vy: -(Math.random() * 1.4 + 0.5),
+      vx: (Math.random() - 0.5) * 1.2,
+      size: Math.random() * 2.5 + 0.5,
+      decay: Math.random() * 0.005 + 0.0015,
+      palette: globalIntensity > 0.6 ? COLORS.gold : COLORS.ember,
+      type: 'rise',
+    }));
+  }
+  // Floating particles
+  if (globalIntensity > 0.3) {
+    for (let i = 0; i < 2; i++) {
+      particles.push(new Particle(
+        Math.random() * W, Math.random() * H, {
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          size: Math.random() * 2 + 0.8,
+          decay: Math.random() * 0.002 + 0.0006,
+          palette: COLORS.warm,
+          type: 'float',
+        }
+      ));
+    }
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Smooth intensity transition
+  globalIntensity += (targetIntensity - globalIntensity) * 0.02;
+
+  // Spawn ambient particles
+  spawnAmbient();
+
+  // Process burst queue
+  while (burstQueue.length > 0) {
+    const b = burstQueue.shift();
+    spawnBurst(b.x, b.y, b.count);
+  }
+
+  // Update & draw
+  particles = particles.filter(p => {
+    p.update();
+    p.draw(ctx);
+    return !p.dead && p.y > -50 && p.y < H + 50 && p.x > -50 && p.x < W + 50;
+  });
+
+  // Cap particles
+  if (particles.length > 200) {
+    particles.splice(0, particles.length - 200);
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// ==================== MOUSE TRACKING ====================
+const cursorGlow = document.getElementById('cursorGlow');
+document.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  cursorGlow.style.left = mouseX + 'px';
+  cursorGlow.style.top = mouseY + 'px';
+  cursorGlow.style.opacity = '1';
+});
+document.addEventListener('mouseleave', () => {
+  cursorGlow.style.opacity = '0';
+});
+
+// Click burst
+document.addEventListener('click', (e) => {
+  spawnBurst(e.clientX, e.clientY, 25);
+});
+
+// ==================== INTRO ====================
+const intro = document.getElementById('intro');
+const btnSkip = document.getElementById('btnSkip');
+
+function hideIntro() {
+  intro.classList.add('hidden');
+  targetIntensity = 0.5;
+}
+
+btnSkip.addEventListener('click', hideIntro);
+// Auto-hide intro after 6 seconds
+setTimeout(() => {
+  if (!intro.classList.contains('hidden')) hideIntro();
+}, 6500);
+
+// ==================== SECTION OBSERVER ====================
+const sections = document.querySelectorAll('section');
+const sectionInners = document.querySelectorAll('.section-inner');
+const progressDots = document.querySelectorAll('.progress-dot');
+
+const observerOptions = { threshold: 0.5, rootMargin: '0px' };
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const inner = entry.target.querySelector('.section-inner');
+    if (!inner) return;
+
+    if (entry.isIntersecting) {
+      inner.classList.add('visible');
+      // Update intensity based on section
+      const id = entry.target.id;
+      const intensities = {
+        s0: 0.3, s1: 0.45, s2: 0.6, s3: 0.8, s4: 0.9, s5: 0.7,
+      };
+      targetIntensity = intensities[id] ?? 0.4;
+
+      // Update progress dots
+      const idx = Array.from(sections).indexOf(entry.target);
+      progressDots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === idx);
+      });
+    } else {
+      inner.classList.remove('visible');
+    }
+  });
+}, observerOptions);
+
+sections.forEach(s => observer.observe(s));
+
+// ==================== BUTTON HANDLERS ====================
+document.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const rect = this.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    const action = this.dataset.action;
+    const counts = { spark: 50, ignite: 100, blaze: 160 };
+    burstQueue.push({ x: cx, y: cy, count: counts[action] || 60 });
+
+    // Brief intensity spike
+    targetIntensity = Math.min(1, targetIntensity + 0.4);
+    setTimeout(() => { targetIntensity = Math.max(0.3, targetIntensity - 0.4); }, 600);
+
+    // Sparkle effect on button
+    const sparkle = document.createElement('div');
+    sparkle.className = 'spark-burst';
+    sparkle.style.left = cx + 'px';
+    sparkle.style.top = cy + 'px';
+    sparkle.style.position = 'fixed';
+    document.body.appendChild(sparkle);
+    setTimeout(() => sparkle.remove(), 800);
+  });
+});
+
+// ==================== PROGRESS DOT CLICKS ====================
+progressDots.forEach(dot => {
+  dot.addEventListener('click', () => {
+    const idx = parseInt(dot.dataset.section);
+    sections[idx].scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+// ==================== SHARE / RESTART ====================
+document.getElementById('btnRestart').addEventListener('click', () => {
+  targetIntensity = 0.3;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => {
+    sections[0].querySelector('.section-inner').classList.remove('visible');
+    setTimeout(() => {
+      sections[0].querySelector('.section-inner').classList.add('visible');
+    }, 100);
+  }, 600);
+});
+
+document.getElementById('btnShare').addEventListener('click', () => {
+  if (navigator.share) {
+    navigator.share({
+      title: '从低谷到发光',
+      text: '每一个女孩都自带光芒 ✦ 从低谷到发光，这是我的故事。',
+      url: window.location.href,
+    }).catch(() => {});
+  } else {
+    // Fallback: copy link
+    navigator.clipboard?.writeText(window.location.href).then(() => {
+      alert('链接已复制，可以分享给朋友啦 ✦');
+    }).catch(() => {
+      alert('从低谷到发光 ✦ 每一个女孩都自带光芒');
+    });
+  }
+});
+
+// ==================== INIT ====================
+// Pre-warm with some particles
+for (let i = 0; i < 20; i++) {
+  particles.push(new Particle(Math.random() * W, Math.random() * H, {
+    vx: (Math.random() - 0.5) * 0.2,
+    vy: (Math.random() - 0.5) * 0.2,
+    size: Math.random() * 2 + 0.5,
+    decay: Math.random() * 0.003 + 0.001,
+    palette: COLORS.warm,
+    type: 'float',
+  }));
+}
+
+// Start animation
+animate();
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !intro.classList.contains('hidden')) {
+    hideIntro();
+  }
+});
+
+console.log('%c✦ 从低谷到发光 ✦ %c— 每一个女孩都自带光芒 —',
+  'color: #f0c27a; font-size: 1.2em;', 'color: #9b8e7e;');
+</script>
+</body>
+</html>
