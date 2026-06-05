@@ -51,6 +51,42 @@
     background: radial-gradient(ellipse at center, transparent 55%, rgba(6,6,15,0.75) 100%);
   }
 
+  /* ===== MUSIC TOGGLE ===== */
+  #musicBtn {
+    position: fixed; bottom: 28px; right: 28px; z-index: 30;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(10,10,36,0.7); border: 1px solid rgba(200,214,229,0.25);
+    color: var(--star); font-size: 1.1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s; backdrop-filter: blur(8px);
+  }
+  #musicBtn:hover {
+    border-color: var(--accent); color: #fff;
+    box-shadow: 0 0 20px rgba(91,155,213,0.3);
+  }
+  #musicBtn.on { border-color: var(--accent); color: var(--accent); }
+  #musicBtn .waves {
+    display: none; gap: 2px; align-items: end; height: 14px;
+  }
+  #musicBtn.on .waves { display: flex; }
+  #musicBtn.on .icon { display: none; }
+  .wave-bar {
+    width: 2px; border-radius: 1px;
+    background: var(--accent);
+    animation: waveAnim 0.9s ease-in-out infinite;
+  }
+  .wave-bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .wave-bar:nth-child(2) { height: 12px; animation-delay: 0.15s; }
+  .wave-bar:nth-child(3) { height: 9px; animation-delay: 0.3s; }
+  .wave-bar:nth-child(4) { height: 14px; animation-delay: 0.45s; }
+  @keyframes waveAnim {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+  @media (max-width: 640px) {
+    #musicBtn { bottom: 16px; right: 12px; width: 38px; height: 38px; font-size: 1rem; }
+  }
+
   /* ===== GRAIN ===== */
   .grain {
     position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0.03;
@@ -290,6 +326,9 @@
 <div class="grain"></div>
 <div class="vignette"></div>
 <canvas id="sky"></canvas>
+
+<!-- MUSIC -->
+<button id="musicBtn" title="播放音乐"><span class="icon">🔇</span><span class="waves"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></span></button>
 
 <!-- INTRO -->
 <div id="intro">
@@ -671,6 +710,179 @@ document.getElementById('btnSend').addEventListener('click', () => {
     }).catch(() => { alert('致高考的你 ✦ 愿你金榜题名！'); });
   }
 });
+
+// ==================== MUSIC SYSTEM ====================
+// Web Audio API — cinematic ambient soundtrack
+let audioCtx = null, masterGain = null, musicPlaying = false;
+let chordTimer = null, sparkleTimer = null, padNodes = [];
+const musicBtn = document.getElementById('musicBtn');
+let musicInitDone = false;
+
+function initMusic() {
+  if (musicInitDone) return;
+  musicInitDone = true;
+  startMusic();
+}
+
+function startMusic() {
+  if (audioCtx) stopMusic();
+  audioCtx = new AudioContext();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.10;
+  masterGain.connect(audioCtx.destination);
+
+  padNodes = [];
+
+  // Chord progression: C → Am → F → G (cinematic, hopeful)
+  const chords = [
+    { root: 65.41, notes: [65.41, 82.41, 98.00, 130.81, 164.81], label: 'C' },
+    { root: 55.00, notes: [55.00, 65.41, 82.41, 110.00, 164.81], label: 'Am' },
+    { root: 43.65, notes: [43.65, 65.41, 87.31, 130.81, 174.61], label: 'F' },
+    { root: 49.00, notes: [49.00, 61.74, 73.42, 98.00, 146.83], label: 'G' },
+  ];
+
+  const penta = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66, 1318.51];
+
+  let chordIdx = 0;
+
+  function fadeOutNodes(nodes, t = 2) {
+    const now = audioCtx.currentTime;
+    nodes.forEach(({ gain, osc }) => {
+      try {
+        gain.gain.linearRampToValueAtTime(0.001, now + t);
+        osc.stop(now + t + 0.1);
+      } catch (e) {}
+    });
+  }
+
+  function playChord(idx) {
+    fadeOutNodes(padNodes, 3);
+    padNodes.length = 0;
+
+    const ch = chords[idx];
+    ch.notes.forEach((f, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      osc.type = i === 0 ? 'triangle' : 'sawtooth';
+      osc.frequency.value = f;
+      osc.detune.value = (Math.random() - 0.5) * 16;
+
+      filter.type = 'lowpass';
+      filter.frequency.value = 280 + i * 60;
+      filter.Q.value = 0.5;
+
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.018 / (i + 1), now + 2.5);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      padNodes.push({ osc, gain });
+    });
+
+    // Sub-bass drone
+    const sub = audioCtx.createOscillator();
+    const subGain = audioCtx.createGain();
+    const subFilter = audioCtx.createBiquadFilter();
+    sub.type = 'sine';
+    sub.frequency.value = ch.root;
+    subFilter.type = 'lowpass';
+    subFilter.frequency.value = 80;
+    const now = audioCtx.currentTime;
+    subGain.gain.setValueAtTime(0.001, now);
+    subGain.gain.linearRampToValueAtTime(0.05, now + 2.5);
+    sub.connect(subFilter);
+    subFilter.connect(subGain);
+    subGain.connect(masterGain);
+    sub.start(now);
+    padNodes.push({ osc: sub, gain: subGain });
+
+    chordIdx = (idx + 1) % chords.length;
+  }
+
+  function playSparkle() {
+    const f = penta[Math.floor(Math.random() * penta.length)];
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const delay = audioCtx.createDelay(0.35);
+    const feedback = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = f;
+
+    feedback.gain.value = 0.35;
+    delay.connect(feedback);
+    feedback.connect(delay);
+
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.018, now + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.0005, now + 1.8);
+
+    const dry = audioCtx.createGain();
+    dry.gain.value = 0.6;
+    const wet = audioCtx.createGain();
+    wet.gain.value = 0.4;
+
+    osc.connect(dry);
+    dry.connect(gain);
+    osc.connect(delay);
+    delay.connect(wet);
+    wet.connect(gain);
+    gain.connect(masterGain);
+
+    osc.start(now);
+    osc.stop(now + 2.0);
+  }
+
+  // Start first chord
+  playChord(0);
+  chordTimer = setInterval(() => playChord(chordIdx), 15000);
+
+  // Sparkle notes — tempo varies by theme
+  function scheduleSparkles() {
+    const r = Math.random();
+    if (r < 0.55) playSparkle();
+    sparkleTimer = setTimeout(scheduleSparkles, Math.random() * 2500 + 1200);
+  }
+  scheduleSparkles();
+
+  musicPlaying = true;
+  musicBtn.classList.add('on');
+  musicBtn.querySelector('.icon').textContent = '🔊';
+}
+
+function stopMusic() {
+  if (chordTimer) { clearInterval(chordTimer); chordTimer = null; }
+  if (sparkleTimer) { clearTimeout(sparkleTimer); sparkleTimer = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  musicPlaying = false;
+  padNodes.length = 0;
+  musicBtn.classList.remove('on');
+  musicBtn.querySelector('.icon').textContent = '🔇';
+}
+
+// Toggle button
+musicBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (musicPlaying) { stopMusic(); }
+  else { initMusic(); }
+});
+
+// Auto-start on first user interaction
+function tryAutoStart(e) {
+  if (!musicInitDone && !e.target.closest('#musicBtn')) {
+    initMusic();
+    document.removeEventListener('click', tryAutoStart);
+    document.removeEventListener('keydown', tryAutoStart);
+  }
+}
+document.addEventListener('click', tryAutoStart);
+document.addEventListener('keydown', tryAutoStart);
 
 // ==================== KICK OFF ====================
 animate();
