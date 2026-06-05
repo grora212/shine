@@ -727,8 +727,10 @@ function initMusic() {
 function startMusic() {
   if (audioCtx) stopMusic();
   audioCtx = new AudioContext();
+  // Fix: resume suspended AudioContext
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.10;
+  masterGain.gain.value = 0.12;
   masterGain.connect(audioCtx.destination);
 
   padNodes = [];
@@ -807,36 +809,26 @@ function startMusic() {
   function playSparkle() {
     const f = penta[Math.floor(Math.random() * penta.length)];
     const osc = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator(); // octave harmonic for bell-like tone
     const gain = audioCtx.createGain();
-    const delay = audioCtx.createDelay(0.35);
-    const feedback = audioCtx.createGain();
 
     osc.type = 'sine';
     osc.frequency.value = f;
-
-    feedback.gain.value = 0.35;
-    delay.connect(feedback);
-    feedback.connect(delay);
+    osc2.type = 'sine';
+    osc2.frequency.value = f * 2;
+    osc2.detune.value = Math.random() * 8 - 4;
 
     const now = audioCtx.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.018, now + 0.06);
-    gain.gain.exponentialRampToValueAtTime(0.0005, now + 1.8);
+    gain.gain.linearRampToValueAtTime(0.022, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0003, now + 1.6);
 
-    const dry = audioCtx.createGain();
-    dry.gain.value = 0.6;
-    const wet = audioCtx.createGain();
-    wet.gain.value = 0.4;
-
-    osc.connect(dry);
-    dry.connect(gain);
-    osc.connect(delay);
-    delay.connect(wet);
-    wet.connect(gain);
+    osc.connect(gain);
+    osc2.connect(gain);
     gain.connect(masterGain);
 
-    osc.start(now);
-    osc.stop(now + 2.0);
+    osc.start(now); osc.stop(now + 1.7);
+    osc2.start(now); osc2.stop(now + 1.7);
   }
 
   // Start first chord
